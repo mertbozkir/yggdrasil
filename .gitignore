@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# IDE / Editor specific files
+.vscode/
+.idea/
+
+# Project specific files/directories
+.keys/
+.files/
+*.log
+
+# OS specific files
+.DS_Store # macOS
+
+# Dependency lock file (Consider if this should be committed based on your workflow)
+# uv.lock

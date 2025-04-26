@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.vscode/
+keys/ # Maybe exclude if you mount them instead
+files/ # Exclude input/output files
+*.log

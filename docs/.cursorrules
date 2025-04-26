@@ -1,0 +1,124 @@
+Secure File Transfer System Project
+
+This project involves developing a secure file transfer system that ensures encrypted transmission, authentication, and integrity validation of files sent over a network. Additionally, the system requires manual low-level manipulation of IP headers (e.g., flags, fragmentation, checksum, TTL) to deepen understanding of network protocols. Students will also analyze network performance metrics such as latency, bandwidth, and packet loss under various conditions using tools like Wireshark, iPerf, and traffic control (tc).
+The project provides hands-on experience with computer networking concepts, security measures, and network performance analysis in a real-world scenario.
+
+Project Objectives
+
+Develop a secure file transfer system with encryption, authentication, and integrity checks.
+Manually manipulate and process IP headers to understand low-level networking.
+Measure and analyze network performance metrics under different conditions.
+Simulate and analyze security attacks to ensure the system's robustness.
+
+
+Core Features (Mandatory)
+The following features must be implemented to meet the project requirements:
+1. File Transfer System
+
+Functionality: Supports sending and receiving files over a network.
+Fragmentation & Reassembly: Manually handle packet fragmentation and reassembly for large file transfers.
+Error Handling: Implement error detection and correction mechanisms (e.g., checksums, retransmission).
+
+2. Security Mechanisms
+
+Encryption: Use AES or RSA encryption to protect files during transmission.
+Authentication: Implement client authentication before allowing file transfers.
+Integrity: Ensure data integrity using cryptographic hashing (e.g., SHA-256).
+
+3. Low-Level IP Header Processing
+
+Manual Manipulation: Manually modify and process IP headers, including flags, TTL, checksum, and fragmentation.
+Checksum Validation: Compute and verify IP checksums to detect transmission errors.
+Packet Reassembly: Analyze and handle packet reassembly on the receiver side.
+
+4. Network Performance Measurement
+
+Metrics:
+Measure latency (e.g., using ping, RTT calculations).
+Measure bandwidth (e.g., using iPerf and packet analysis).
+Simulate packet loss and network congestion (e.g., using tc).
+
+
+Conditions: Compare performance under different network conditions (e.g., Wi-Fi vs. wired, local vs. remote).
+
+5. Security Analysis & Attack Simulation
+
+Packet Analysis: Intercept and analyze packets using Wireshark.
+Attack Simulation: Simulate man-in-the-middle (MITM) attacks and packet injection.
+Encryption Validation: Ensure that encrypted data is unreadable in packet captures.
+
+
+Suggested Technologies
+The following technologies and tools are recommended for the project:
+
+Programming Languages: Python (with Scapy for packet manipulation) or C (with raw sockets).
+Encryption Libraries: OpenSSL, PyCrypto, or hashlib.
+Network Analysis Tools: Wireshark, iPerf, netstat, ping, tc.
+Packet Manipulation: Scapy (Python) or raw sockets (C).
+
+
+Additional Features (Bonus Points)
+Implementing the following features will earn extra credit:
+
+Hybrid TCP/UDP Switching: Adapt the file transfer method based on network conditions.
+Dynamic Congestion Control: Implement rate adaptation for efficient bandwidth usage.
+Graphical User Interface (GUI): Build a simple UI for file transfer visualization.
+Advanced Attack Simulations: Implement real-time packet filtering and intrusion detection.
+
+
+Grading Criteria (100 Points Total)
+The project will be evaluated based on the following criteria:
+1. Functionality (18 points)
+
+File Transfer Implementation (6 points): Correctly transmits files.
+Encryption & Authentication (6 points): Implements AES/RSA encryption and client authentication.
+Fragmentation & Reassembly (6 points): Properly handles large file transfers.
+
+2. Low-Level IP Header Processing (12 points)
+
+Manual IP Header Manipulation (6 points): Customizes IP headers (TTL, flags, checksum).
+Checksum Validation (6 points): Detects transmission errors using computed checksums.
+
+3. Network Performance Measurement (15 points)
+
+Latency Measurement (3 points): Accurate round-trip time (RTT) calculations.
+Bandwidth Analysis (3 points): Compares actual vs. theoretical transfer speeds.
+Packet Loss Handling (6 points): Simulates packet loss and verifies retransmission mechanisms.
+Performance Comparison (3 points): Evaluates performance across multiple network types (Wi-Fi, wired, VPN).
+
+4. Security Analysis (9 points)
+
+Encryption Validation (3 points): Ensures encrypted data is unreadable in network traffic.
+Attack Simulations (3 points): Detects or mitigates MITM and packet injection attacks.
+Secure Protocol Justification (3 points): Compares various encryption and authentication mechanisms.
+
+5. Code Quality & Documentation (40 points)
+
+Code Readability & Comments (20 points): Adheres to best coding practices and is well-documented.
+Report Quality (20 points): Provides a comprehensive analysis of the system's design, implementation, and performance evaluation.
+
+Total: 100 points
+
+Code Quality and Best Practices
+
+Readability: Write clean, readable code with appropriate comments.
+Modularity: Structure the code into modular components (e.g., separate modules for security, networking, and file handling).
+Testing: Implement unit tests (e.g., using unittest or pytest) and integration tests.
+Version Control: Use Git for version control with a clear commit history.
+
+
+Reporting Requirements
+
+Comprehensive Analysis: Include a detailed report covering the system's design, implementation, and performance evaluation.
+Security Analysis: dissonance the effectiveness of security measures and results from simulated attacks.
+Performance Comparison: Provide a comparison of network performance under various conditions.
+
+
+Expected Learning Outcomes
+Upon completion of this project, students will gain:
+
+Hands-on experience with low-level networking (IP headers, sockets, packet handling).
+Practical understanding of network performance metrics (latency, bandwidth, packet loss).
+Exposure to security risks and defensive programming in networking.
+
+

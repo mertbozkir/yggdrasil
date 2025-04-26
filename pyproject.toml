@@ -1,0 +1,24 @@
+[project]
+name = "yggdrasil"
+version = "0.1.0"
+description = "Computer Networks project."
+readme = "README.md"
+authors = [
+    { name = "mert bozkir", email = "mert.bozkirr@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "cryptography>=44.0.2",
+    "ruff>=0.11.7",
+    "scapy>=2.6.1",
+]
+
+[project.scripts]
+yggdrasil = "src:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+    packages = ["src"]

@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import serialization
 import os
 
 # Configuration
-KEY_DIR = "keys"
+KEY_DIR = ".keys"
 SERVER_PRIVATE_KEY_PATH = os.path.join(KEY_DIR, "server_private.pem")
 SERVER_PUBLIC_KEY_PATH = os.path.join(KEY_DIR, "server_public.pem")
 CLIENT_PRIVATE_KEY_PATH = os.path.join(KEY_DIR, "client_private.pem")

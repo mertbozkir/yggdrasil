@@ -1,0 +1,188 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage[svgnames]{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=teal,
+    pdftitle={Yggdrasil Midterm Report},
+    pdfpagemode=FullScreen,
+    }
+\usepackage{url}
+\usepackage{microtype}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  commentstyle=\color{gray},
+  keywordstyle=\bfseries\color{NavyBlue},
+  stringstyle=\color{FireBrick},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=4,
+  captionpos=b
+}
+
+\usepackage[margin=1in]{geometry}
+
+\title{\fbox{\href{https://github.com/mertbozkir/yggdrasil}{Yggdrasil}}: Secure File Transfer System \\ Midterm Report}
+\author{
+  Mert Bozkir \\
+  \texttt{mert.bozkirr@gmail.com} \\
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\vspace{30mm}
+\begin{abstract}
+This report details the midterm progress of the Yggdrasil project, a secure file transfer system developed in Python. The primary goal is to create a robust application ensuring confidentiality, authentication, and integrity during network file exchange, while also incorporating low-level network protocol understanding through manual IP header manipulation. Key features implemented to date include a TCP client-server framework, RSA-based client authentication via challenge-response, secure AES key exchange using RSA encryption, and AES-GCM encryption for file data transmission. The system also includes basic packetization, checksum validation for encrypted payloads, and initial ACK/NACK handling. Docker support is provided for ease of deployment and testing. This report outlines the system architecture, details the implementation of current features, discusses challenges faced, and maps out the future work required to meet all project objectives.
+\end{abstract}
+
+\vspace{60mm}
+
+\section{Introduction}
+\label{sec:introduction}
+Secure data transmission is paramount in modern networking. The Yggdrasil project aims to address this need by developing a secure file transfer system from the ground up. This system is designed not only to provide practical security features but also to serve as an educational tool, requiring exploration into lower-level network operations.
+
+The core problem Yggdrasil solves is the secure transfer of files between two endpoints over an potentially insecure network. Key objectives, derived from the project requirements outlined in \texttt{docs/.cursorrules} and \texttt{docs/stages.md}, include:
+\begin{itemize}
+    \item \textbf{Functionality:} Reliable file sending and receiving over TCP sockets.
+    \item \textbf{Security:} Implementing robust client authentication (RSA), data confidentiality (AES-GCM), and data integrity (SHA-256).
+    \item \textbf{Low-Level Networking:} Manual manipulation and processing of IP headers (flags, TTL, checksum, fragmentation) using Scapy.
+    \item \textbf{Performance Analysis:} Measuring and analyzing metrics like latency, bandwidth, and packet loss under various conditions.
+    \item \textbf{Security Analysis:} Validating security measures against simulated attacks like MITM and packet injection.
+\end{itemize}
+This midterm report details the progress made towards these objectives, focusing on the implemented architecture, core transfer mechanisms, security features, and Dockerization. It also discusses the current system status, challenges encountered, and the planned steps for future development.
+
+\section{System Design and Architecture}
+\label{sec:design}
+Yggdrasil employs a standard client-server architecture communicating over TCP sockets. Python (version 3.11+) was chosen as the primary development language due to its extensive libraries for networking and cryptography.
+
+The system is divided into a client (\texttt{src/client.py}) responsible for initiating connections and sending files, and a server (\texttt{src/server.py}) responsible for listening for connections, authenticating clients, and receiving files. Common configurations and utility functions are shared via \texttt{src/config.py} and \texttt{src/utils.py}, respectively.
+
+Key technologies and libraries used include:
+\begin{itemize}
+    \item \textbf{Python Standard Library:} Primarily the \texttt{socket}, \texttt{struct}, \texttt{os}, \texttt{hashlib}, and \texttt{time} modules.
+    \item \textbf{Cryptography:} The \texttt{cryptography} library (version >= 44.0.2) is used for all cryptographic operations, including RSA key generation, signing/verification, encryption/decryption, AES key generation, and AES-GCM authenticated encryption/decryption.
+    \item \textbf{Scapy:} Planned for use in later stages for low-level packet manipulation, as indicated by its inclusion in \texttt{pyproject.toml} and presence of scripts like \texttt{scripts/send\_manipulated\_packet.py}.
+    \item \textbf{uv:} Used as the Python package installer and virtual environment manager, specified in \texttt{pyproject.toml}.
+    \item \textbf{Docker:} Utilized for containerization, with configuration defined in the \texttt{Dockerfile}.
+\end{itemize}
+Project dependencies are managed using \texttt{uv} via the \texttt{pyproject.toml} file.
+
+\subsection{Packet Structure}
+\label{sec:packet_structure}
+A custom packet header is defined in \texttt{src/config.py} to manage the file transfer process. The header format (\texttt{HEADER\_FORMAT = "!II16sB"}) translates to:
+\begin{itemize}
+    \item Sequence Number (32-bit unsigned integer, network byte order): Identifies the packet order.
+    \item Data Length (32-bit unsigned integer, network byte order): Specifies the length of the subsequent payload data.
+    \item Checksum (16 bytes): MD5 hash of the (potentially encrypted) payload data, used for basic corruption detection (\texttt{utils.calculate\_checksum}).
+    \item Flags (8-bit unsigned integer): Indicate packet type or status, such as \texttt{FLAG\_FIN} (final packet), \texttt{FLAG\_ACK} (acknowledgment), or \texttt{FLAG\_NACK} (negative acknowledgment).
+\end{itemize}
+The total header size (\texttt{HEADER\_SIZE}) is calculated based on this format. Packets are constructed using \texttt{utils.create\_packet} and parsed using \texttt{utils.unpack\_header}. Note that the checksum is currently calculated over the *encrypted* payload before transmission.
+
+\section{Implementation Details}
+\label{sec:implementation}
+This section details the core components implemented so far.
+
+\subsection{Core File Transfer}
+\label{sec:core_transfer}
+The basic file transfer relies on standard TCP socket programming.
+\begin{itemize}
+    \item \textbf{Connection:} The client establishes a TCP connection to the server at the host and port specified in \texttt{config.py}. The server listens for and accepts incoming connections. Basic socket timeouts (\texttt{SOCKET\_TIMEOUT}) are implemented.
+    \item \textbf{Framing:} Before sending variable-length data like cryptographic elements (signatures, keys) or filenames/hashes, the data's length is packed into a 4-byte network-order integer and sent first, followed by the data itself. The receiver uses this length prefix to know how many bytes to expect. This is handled by \texttt{utils.send\_data\_with\_length} and \texttt{utils.receive\_data\_with\_length}.
+    \item \textbf{File Handling:} The client reads the input file in chunks defined by \texttt{CHUNK\_SIZE}. Each chunk is encrypted and encapsulated in a data packet. The server receives these packets, decrypts them, and writes the data sequentially to an output file in the \texttt{OUTPUT\_DIR}.
+    \item \textbf{Termination:} The client sends a final packet with the \texttt{FLAG\_FIN} flag set after sending all file data. The server acknowledges this FIN packet.
+    \item \textbf{ACK/NACK:} Basic ACK/NACK handling is implemented. The server sends ACKs for successfully received and processed packets. The client currently handles ACKs to advance its conceptual sliding window (\texttt{utils.SlidingWindow}). NACKs are sent by the server on checksum failures or decryption errors. The client includes logic to retransmit packets upon receiving a NACK or experiencing a timeout (\texttt{client.handle\_ack}, \texttt{client.run\_client} loop). A simple retransmission limit (\texttt{MAX\_RETRIES}) is used.
+\end{itemize}
+
+\subsection{Security Mechanisms}
+\label{sec:security}
+Security is implemented in stages: authentication, key exchange, and data encryption. Keys are generated using \texttt{scripts/generate\_keys.py} and loaded using \texttt{utils.load\_private\_key} and \texttt{utils.load\_public\_key}.
+\begin{itemize}
+    \item \textbf{Authentication:} A challenge-response mechanism using RSA signatures ensures client identity.
+        \begin{enumerate}
+            \item Server generates a random challenge (\texttt{os.urandom(AUTH\_CHALLENGE\_SIZE)}) and sends it to the client.
+            \item Client signs the challenge using its private RSA key (\texttt{utils.rsa\_sign} with PSS padding).
+            \item Client sends the signature back to the server.
+            \item Server verifies the signature against the original challenge using the client's public key (\texttt{utils.rsa\_verify} with PSS padding). If valid, authentication succeeds.
+        \end{enumerate}
+    \item \textbf{AES Key Exchange:} A shared secret (AES key) for bulk data encryption is established securely.
+        \begin{enumerate}
+            \item Client generates a random AES key (\texttt{utils.generate\_aes\_key}, size \texttt{AES\_KEY\_SIZE}).
+            \item Client encrypts the AES key using the server's public RSA key (\texttt{utils.rsa\_encrypt} with OAEP padding).
+            \item Client sends the encrypted AES key to the server.
+            \item Server decrypts the AES key using its private RSA key (\texttt{utils.rsa\_decrypt} with OAEP padding).
+            \item Server sends confirmation (\texttt{AES\_KEY\_OK}) back to the client.
+        \end{enumerate}
+    \item \textbf{Data Encryption:} File chunks are encrypted before transmission using AES in GCM mode, providing both confidentiality and authenticity.
+        \begin{enumerate}
+            \item For each chunk, the client generates a unique nonce (\texttt{os.urandom(AES\_NONCE\_SIZE)}).
+            \item The client encrypts the chunk using the established AES key and the nonce (\texttt{utils.aes\_encrypt}). AES-GCM produces ciphertext and an authentication tag.
+            \item The nonce is prepended to the ciphertext+tag before being sent as the packet payload.
+            \item The server receives the payload, extracts the nonce, and decrypts the ciphertext using the AES key and nonce (\texttt{utils.aes\_decrypt}). AES-GCM automatically verifies the authentication tag during decryption; an invalid tag raises an exception (\texttt{InvalidTag}), which triggers a NACK.
+        \end{enumerate}
+    \item \textbf{Integrity (Initial):} Before transfer, the client calculates the SHA-256 hash of the entire file (\texttt{utils.calculate\_file\_hash}) and sends it to the server along with the filename. After receiving the FIN packet and assembling the file, the server calculates the hash of the received file and compares it to the expected hash. The result (pass/fail) is logged.
+\end{itemize}
+
+\subsection{Dockerization}
+\label{sec:docker}
+A \texttt{Dockerfile} is provided to containerize the application. It uses a Python 3.11 base image provided by Astral (specifically `ghcr.io/astral-sh/uv:python3.11-bookworm-slim`), installs system dependencies (\texttt{libpcap-dev} for Scapy), installs project dependencies using \texttt{uv pip install --system .}, and copies the source code (\texttt{src/}), scripts (\texttt{scripts/}), and keys (\texttt{keys/}) into the container image. Instructions for building the image and running the client and server containers (including network configuration for macOS using Docker Desktop or Colima) are detailed in the \texttt{README.md}. This simplifies setup and ensures a consistent runtime environment.
+
+\section{Current Status and Results}
+\label{sec:status}
+As of this midterm report, the following core functionalities are implemented and operational:
+\begin{itemize}
+    \item Successful TCP client-server connection establishment.
+    \item RSA key generation and loading.
+    \item RSA-based challenge-response authentication.
+    \item Secure AES key exchange via RSA encryption.
+    \item Transmission of filename and SHA-256 file hash.
+    \item AES-GCM encryption and decryption of file chunks during transfer.
+    \item Basic packet framing with custom headers (sequence number, length, checksum, flags).
+    \item MD5 checksum calculation and verification on the encrypted payload.
+    \item Basic ACK/NACK handling for flow control and error notification (checksum/decryption failure).
+    \item Basic retransmission mechanism based on timeouts and NACKs.
+    \item Server-side file reassembly and final integrity check using the received SHA-256 hash.
+    \item Docker containerization for both client and server.
+\end{itemize}
+Preliminary tests involving transferring text files locally between the client and server, both run directly and via Docker containers (using `host.docker.internal` or the Colima IP), have been successful, demonstrating the functionality of the implemented security layers and basic transfer protocol.
+
+\section{Future Work}
+\label{sec:future_work}
+Significant development is planned to complete the project's objectives. The next phases of work will focus on the following key areas:
+
+\begin{itemize}
+    \item \textbf{Robust Flow Control:} Implementing a more sophisticated sliding window protocol (\texttt{utils.SlidingWindow} exists but needs full integration and testing) to handle network congestion and optimize throughput.
+    \item \textbf{Low-Level IP Manipulation:} Integrating Scapy (using logic from \texttt{scripts/send\_manipulated\_packet.py} and \texttt{scripts/sniff\_packets.py}) to manually modify IP headers (TTL, flags, fragmentation) and validate checksums at the IP layer.
+    \item \textbf{Network Performance Measurement:} Conducting systematic evaluations using tools like \texttt{iPerf} and \texttt{tc} to measure latency, bandwidth, and the impact of simulated packet loss, comparing performance across different network conditions (e.g., Wi-Fi vs. wired).
+    \item \textbf{Security Analysis and Validation:} Performing packet captures with Wireshark to verify encryption effectiveness in transit and simulating attacks (MITM, packet injection) to test the resilience of the implemented security measures.
+    \item \textbf{Comprehensive Testing:} Developing thorough unit tests for critical components (e.g., security functions, packet handling) and integration tests to ensure reliable end-to-end system operation under various conditions.
+    \item \textbf{Documentation Refinement:} Enhancing code comments and finalizing a comprehensive project report detailing the system design, implementation specifics, performance results, and security analysis outcomes.
+    \item \textbf{Final Review and Polish:} Conducting a final review of all project components (code, tests, documentation) to ensure all requirements are met before submission.
+\end{itemize}
+
+\section{Conclusion}
+\label{sec:conclusion}
+The Yggdrasil project has made substantial progress towards creating a secure file transfer system. The core architecture is established, and critical security features including RSA-based authentication, secure AES key exchange, and AES-GCM data encryption are functional. Basic file transfer, packet handling, and Dockerization have also been successfully implemented. The focus moving forward will be on enhancing the robustness of the transfer protocol (flow control, error handling), implementing low-level IP header manipulation, and conducting thorough performance and security analyses as outlined in the project requirements. The project is currently on track to meet its objectives for the final submission.
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}
